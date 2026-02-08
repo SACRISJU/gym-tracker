@@ -369,7 +369,9 @@ function strengthLineHTML(current, isCustom, isDone){
       ${isCustom ? `<button class="iconBtn" title="Borrar">🗑️</button>` : ``}
       <span class="name ${isDone ? "done" : ""}" title="Toca el nombre para ver el último registro">${escapeHtml(current.name)}</span>
 
-      <input data-weight class="w3" type="text" value="${escapeHtml(current.weight)}" title="Peso" />
+      <span class="chip" data-weight="-1">−</span>
+      <input data-weight-input class="w3" type="text" value="${escapeHtml(current.weight)}" title="Peso" />
+      <span class="chip" data-weight="+1">+</span>
       <span class="chip" data-reps="-1">−</span>
       <input data-reps-input class="w2" type="text" value="${escapeHtml(current.reps)}" title="Reps" />
       <span class="chip" data-reps="+1">+</span>
@@ -527,7 +529,9 @@ function renderList(){
       }
 
       if(current.kind === "strength"){
-        const weightInput = card.querySelector("[data-weight]");
+        const weightInput = card.querySelector("[data-weight-input]");
+        const weightMinus = card.querySelector('[data-weight="-1"]');
+        const weightPlus = card.querySelector('[data-weight="+1"]');
         const repsMinus = card.querySelector('[data-reps="-1"]');
         const repsPlus  = card.querySelector('[data-reps="+1"]');
         const repsInput = card.querySelector("[data-reps-input]");
@@ -536,6 +540,19 @@ function renderList(){
         const setsInput = card.querySelector("[data-sets-input]");
 
         weightInput.addEventListener("change", () => persist({ kind:"strength", weight: weightInput.value }));
+        function updateWeight(delta){
+          const raw = String(weightInput.value ?? "");
+          const match = raw.match(/-?\d+(?:\.\d+)?/);
+          if(!match) return;
+          const base = parseFloat(match[0]);
+          if(!Number.isFinite(base)) return;
+          const decimals = match[0].includes(".") ? match[0].split(".")[1].length : 0;
+          const next = (base + delta).toFixed(decimals);
+          weightInput.value = raw.replace(match[0], next);
+          persist({ kind:"strength", weight: weightInput.value });
+        }
+        weightMinus.addEventListener("click", () => updateWeight(-1));
+        weightPlus.addEventListener("click", () => updateWeight(1));
 
         function setReps(v){
           const val = Math.max(1, asIntOr(v, DEFAULT_REPS));
