@@ -1,0 +1,701 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Gym Tracker (ultra compact v2)</title>
+  <style>
+    :root { --pad: 12px; --radius: 14px; }
+    body { margin:0; font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:#0b0c10; color:#e8e8e8; }
+    header{
+      position:sticky; top:0; z-index:5;
+      background: rgba(11,12,16,0.9); backdrop-filter: blur(10px);
+      border-bottom:1px solid rgba(255,255,255,0.08);
+      padding: 10px var(--pad);
+    }
+    h1{ margin:0; font-size:15px; font-weight:900; letter-spacing:.2px; }
+    .sub{ margin-top:6px; font-size:12px; opacity:.75; }
+    main{ padding: var(--pad); padding-bottom: 100px; }
+
+    .menu{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; }
+    .btn{
+      border:1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.06);
+      color:#fff;
+      padding:12px;
+      border-radius: var(--radius);
+      text-align:center;
+      font-weight:900;
+      letter-spacing:.2px;
+      user-select:none;
+      -webkit-tap-highlight-color: transparent;
+      cursor:pointer;
+    }
+    .btn:active{ transform: scale(0.99); }
+    .btn.primary{ background: rgba(82,255,169,0.16); border-color: rgba(82,255,169,0.35); }
+    .btn.danger{ background: rgba(255,84,84,0.14); border-color: rgba(255,84,84,0.35); }
+    .btn.ghost{ background: rgba(255,255,255,0.03); }
+
+    .row{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin: 10px 0; }
+
+    input{
+      background: rgba(255,255,255,0.06);
+      color:#fff;
+      border:1px solid rgba(255,255,255,0.12);
+      border-radius: 10px;
+      padding: 6px 6px;
+      font-size: 13px;
+      outline: none;
+      line-height: 1;
+    }
+    .pill{
+      display:inline-flex; gap:8px; align-items:center;
+      padding: 8px 10px;
+      border-radius: 999px;
+      border:1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.05);
+      font-size: 13px;
+    }
+    .small{ font-size:12px; opacity:.8; }
+
+    .sectionTitle{ margin: 12px 0 6px; font-size: 12px; letter-spacing:.6px; opacity:.8; font-weight: 900; }
+
+    .card{
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 14px;
+      padding: 8px 10px;
+      margin: 6px 0;
+    }
+
+    /* línea única por ejercicio */
+    .line{
+      display:flex;
+      align-items:center;
+      gap:6px;
+      flex-wrap:nowrap;
+      overflow-x:auto; /* por si algún nombre es larguísimo */
+      -webkit-overflow-scrolling: touch;
+    }
+    .name{
+      font-weight:900;
+      font-size: 13px;
+      letter-spacing:.1px;
+      white-space:nowrap;
+      margin-right: 6px;
+    }
+    .done{ opacity:.55; text-decoration: line-through; }
+
+    .chip{
+      padding: 6px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.06);
+      font-weight: 900;
+      font-size: 13px;
+      user-select:none;
+      cursor:pointer;
+      -webkit-tap-highlight-color: transparent;
+      line-height: 1;
+    }
+
+    /* Inputs ultra compactos */
+    .w3{ width: 3.4ch; text-align:center; }
+    .w2{ width: 2.6ch; text-align:center; }
+
+    /* Checkbox grande */
+    input[type="checkbox"]{ transform: scale(1.7); transform-origin:center; }
+
+    .iconBtn{
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.04);
+      color:#fff;
+      padding: 6px 8px;
+      border-radius: 10px;
+      cursor: pointer;
+      user-select:none;
+      line-height: 1;
+    }
+
+    .footer{
+      position:fixed; left:0; right:0; bottom:0;
+      background: rgba(11,12,16,0.92);
+      border-top: 1px solid rgba(255,255,255,0.08);
+      padding: 10px var(--pad);
+      display:flex; gap:10px; align-items:center;
+    }
+    .footer .btn{ flex:1; padding: 12px; border-radius: 14px; }
+
+    .hint{ margin-top: 10px; font-size: 12px; opacity: .75; line-height:1.4; }
+    textarea{
+      width:100%; min-height:120px; resize:vertical;
+      background: rgba(255,255,255,0.06);
+      color:#fff;
+      border:1px solid rgba(255,255,255,0.12);
+      border-radius: 14px;
+      padding: 10px 12px;
+      font-size: 12px;
+      outline:none;
+    }
+    .hide{ display:none; }
+  </style>
+
+  <!-- PWA -->
+  <meta name="theme-color" content="#0b0c10" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Gym Tracker" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+
+</head>
+<body>
+<header>
+  <h1>Gym Tracker — ultra compacto</h1>
+  <div class="sub" id="subtitle">Elige grupo muscular.</div>
+</header>
+
+<main>
+  <section id="screenMenu">
+    <div class="menu" id="groupMenu"></div>
+    <div class="hint">Se guarda en tu móvil (LocalStorage). Si borras los datos del navegador, adiós progreso.</div>
+  </section>
+
+  <section id="screenList" class="hide">
+    <div class="row">
+      <button class="btn ghost" id="backBtn">⬅ Volver</button>
+
+      <div class="pill">
+        <span class="small">Grupo:</span>
+        <strong id="groupTitle">—</strong>
+      </div>
+
+      <label class="pill" style="gap:10px;">
+        <span class="small">Buscar</span>
+        <input id="search" type="text" placeholder="ej: cable..." style="width: 150px;" />
+      </label>
+
+      <button class="btn primary" id="addExerciseBtn">+ Añadir</button>
+    </div>
+
+    <div class="row">
+      <button class="btn ghost" id="uncheckAll">Desmarcar ✅</button>
+      <button class="btn danger" id="resetGroup">Reset grupo</button>
+    </div>
+
+    <div id="exerciseList"></div>
+
+    <div class="card">
+      <div class="line" style="justify-content:space-between;">
+        <strong style="white-space:nowrap;">Backup</strong>
+        <span class="small" style="white-space:nowrap;">Exporta / Importa</span>
+      </div>
+      <div class="row" style="margin:10px 0 0;">
+        <button class="btn ghost" id="exportBtn">Exportar</button>
+        <button class="btn ghost" id="importBtn">Importar</button>
+      </div>
+      <div id="ioArea" class="hide" style="margin-top:10px;">
+        <textarea id="ioText" placeholder="Al exportar aparece aquí el JSON. Para importar: pega y aplica."></textarea>
+        <div class="row">
+          <button class="btn primary" id="applyImport">Aplicar</button>
+          <button class="btn ghost" id="closeIO">Cerrar</button>
+        </div>
+        <div class="hint" id="ioHint"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="footer">
+  <button class="btn primary" id="quickSave">Guardar (ya se guarda solo)</button>
+</div>
+
+<script>
+const BASE_EXERCISES = [
+  { group:"HOMBROS", kind:"strength", name:"Mancuerna elevación lateral", weight:"25", reps:12, sets:4 },
+  { group:"HOMBROS", kind:"strength", name:"Levantar disco", weight:"45", reps:12, sets:4 },
+  { group:"HOMBROS", kind:"strength", name:"Máquina apertura atrás", weight:"100", reps:12, sets:4 },
+  { group:"HOMBROS", kind:"strength", name:"Press de hombro máquina", weight:"60", reps:12, sets:4 },
+  { group:"HOMBROS", kind:"strength", name:"Tirar cable lateral 1 brazo y manguito", weight:"12.5", reps:12, sets:4 },
+  { group:"HOMBROS", kind:"strength", name:"Pulso con cable polea", weight:"17.5", reps:15, sets:4 },
+  { group:"HOMBROS", kind:"strength", name:"Nadar con disco pequeño o pesa", weight:"10", reps:15, sets:3 },
+
+  { group:"TRICEPS", kind:"strength", name:"Máquina tríceps sentado", weight:"135", reps:12, sets:4 },
+  { group:"TRICEPS", kind:"strength", name:"Tríceps con cable", weight:"50", reps:15, sets:4 },
+  { group:"TRICEPS", kind:"strength", name:"Tríceps con mancuerna (torcida)", weight:"40", reps:10, sets:4 },
+  { group:"TRICEPS", kind:"strength", name:"Tríceps con cable una mano", weight:"10", reps:15, sets:4 },
+
+  { group:"PECHO", kind:"strength", name:"Press de pecho tumbado (peso total)", weight:"40", reps:10, sets:4 },
+  { group:"PECHO", kind:"strength", name:"Press de pecho sentado (peso total)", weight:"30", reps:8, sets:4 },
+  { group:"PECHO", kind:"strength", name:"Pecho tumbado en banco", weight:"20", reps:8, sets:4 },
+  { group:"PECHO", kind:"strength", name:"Cable cruzado mágico", weight:"30", reps:15, sets:4 },
+  { group:"PECHO", kind:"strength", name:"Máquina apertura adelante", weight:"115", reps:12, sets:4 },
+
+  { group:"ABDOMINALES", kind:"strength", name:"Máquina oblicuos", weight:"170", reps:12, sets:4 },
+  { group:"ABDOMINALES", kind:"strength", name:"Bajar máquina de rodillas", weight:"85", reps:12, sets:4 },
+  { group:"ABDOMINALES", kind:"strength", name:"Movimientos tenis con cable", weight:"niv 4", reps:12, sets:4 },
+  { group:"ABDOMINALES", kind:"strength", name:"Abdominal lateral con cable", weight:"70", reps:12, sets:4 },
+  { group:"ABDOMINALES", kind:"strength", name:"Máquina de flexiones asistidas (abd)", weight:"100", reps:20, sets:4 },
+
+  { group:"PIERNAS", subgroup:"GEMELOS", kind:"strength", name:"Gemelo en máquina (pierna estirada)", weight:"290", reps:12, sets:4 },
+  { group:"PIERNAS", subgroup:"GEMELOS", kind:"strength", name:"Gemelo en máquina (pierna ángulo)", weight:"250", reps:15, sets:4 },
+  { group:"PIERNAS", subgroup:"CUÁDRICEPS", kind:"strength", name:"Cuádriceps en máquina", weight:"145", reps:12, sets:4 },
+  { group:"PIERNAS", subgroup:"CUÁDRICEPS", kind:"strength", name:"Press de pierna", weight:"170", reps:8, sets:4 },
+  { group:"PIERNAS", subgroup:"GLÚTEOS", kind:"strength", name:"Máquina levantar pelvis", weight:"30", reps:12, sets:3 },
+  { group:"PIERNAS", subgroup:"GLÚTEOS", kind:"strength", name:"Extensión de espalda en banco", weight:"25", reps:50, sets:2 },
+  { group:"PIERNAS", subgroup:"GLÚTEOS", kind:"strength", name:"Máquina glúteo", weight:"130", reps:10, sets:4 },
+  { group:"PIERNAS", subgroup:"GLÚTEOS", kind:"strength", name:"Levantar barra desde piso", weight:"70", reps:15, sets:4 },
+  { group:"PIERNAS", subgroup:"GLÚTEOS", kind:"strength", name:"Máquina pierna a una pierna (superficial)", weight:"70", reps:15, sets:4 },
+  { group:"PIERNAS", subgroup:"ISQUIOS / ADUCTORES", kind:"strength", name:"Máquina isquiotibiales (tumbado)", weight:"95", reps:8, sets:4 },
+  { group:"PIERNAS", subgroup:"ISQUIOS / ADUCTORES", kind:"strength", name:"Máquina isquiotibiales (sentado)", weight:"145", reps:10, sets:4 },
+  { group:"PIERNAS", subgroup:"ISQUIOS / ADUCTORES", kind:"strength", name:"Máquina aductores (abrir)", weight:"220", reps:15, sets:4 },
+  { group:"PIERNAS", subgroup:"ISQUIOS / ADUCTORES", kind:"strength", name:"Máquina aductores (cerrar)", weight:"190", reps:12, sets:4 },
+
+  { group:"BICEPS", kind:"strength", name:"Bíceps con mancuerna", weight:"25", reps:12, sets:4 },
+  { group:"BICEPS", kind:"strength", name:"Bíceps con barra curva", weight:"50", reps:12, sets:4 },
+  { group:"BICEPS", kind:"strength", name:"Bíceps en máquina", weight:"50", reps:8, sets:4 },
+  { group:"BICEPS", kind:"strength", name:"Bíceps con cable polea", weight:"70", reps:12, sets:4 },
+
+  { group:"ESPALDA", kind:"strength", name:"Espalda con cable", weight:"100", reps:12, sets:4 },
+  { group:"ESPALDA", kind:"strength", name:"Máquina tirar hacia abajo sentado", weight:"70", reps:12, sets:4 },
+  { group:"ESPALDA", kind:"strength", name:"Máquina remo sentado", weight:"85", reps:15, sets:4 },
+  { group:"ESPALDA", kind:"strength", name:"Flexiones en barra asistidas", weight:"70", reps:15, sets:4 },
+  { group:"ESPALDA", kind:"strength", name:"Tirar con cable hacia abajo (poleas)", weight:"130", reps:12, sets:4 },
+
+  { group:"CARDIO", kind:"cardio", name:"Escaleras", minutes:"", level:"", sets:1 },
+  { group:"CARDIO", kind:"cardio", name:"Elíptica", minutes:"55", level:"", sets:1 },
+  { group:"CARDIO", kind:"cardio", name:"Correr", minutes:"", level:"", sets:1 },
+];
+
+const GROUPS = ["HOMBROS","TRICEPS","PECHO","ABDOMINALES","PIERNAS","BICEPS","ESPALDA","CARDIO"];
+const KEY = "gym_tracker_ultra_compact_v2";
+
+const DEFAULT_REPS = 15;
+const DEFAULT_SETS = 4;
+
+let currentGroup = null;
+
+function defaultStore(){ return { items:{}, done:{}, customExercises:[] }; }
+function loadStore(){
+  try{
+    const raw = localStorage.getItem(KEY);
+    const st = raw ? JSON.parse(raw) : defaultStore();
+    st.items ||= {}; st.done ||= {}; st.customExercises ||= [];
+    return st;
+  }catch{ return defaultStore(); }
+}
+function saveStore(st){ localStorage.setItem(KEY, JSON.stringify(st)); }
+
+function idFor(ex){
+  const sg = (ex.subgroup || "").trim();
+  return `${ex.group}::${sg}::${ex.name}`.toLowerCase();
+}
+function getAllExercises(){
+  const st = loadStore();
+  return [...BASE_EXERCISES, ...st.customExercises];
+}
+function isExerciseCustom(exId){
+  const st = loadStore();
+  return st.customExercises.some(e => idFor(e) === exId);
+}
+function deleteExerciseById(exId){
+  const st = loadStore();
+  st.customExercises = st.customExercises.filter(e => idFor(e) !== exId);
+  delete st.items[exId];
+  delete st.done[exId];
+  saveStore(st);
+}
+
+function escapeHtml(s){
+  return String(s ?? "")
+    .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;").replaceAll("'","&#039;");
+}
+
+// UI refs
+const screenMenu = document.getElementById("screenMenu");
+const screenList = document.getElementById("screenList");
+const groupMenu = document.getElementById("groupMenu");
+const groupTitle = document.getElementById("groupTitle");
+const subtitle = document.getElementById("subtitle");
+const list = document.getElementById("exerciseList");
+const backBtn = document.getElementById("backBtn");
+const search = document.getElementById("search");
+const uncheckAll = document.getElementById("uncheckAll");
+const resetGroup = document.getElementById("resetGroup");
+const quickSave = document.getElementById("quickSave");
+const addExerciseBtn = document.getElementById("addExerciseBtn");
+
+// Backup
+const exportBtn = document.getElementById("exportBtn");
+const importBtn = document.getElementById("importBtn");
+const ioArea = document.getElementById("ioArea");
+const ioText = document.getElementById("ioText");
+const applyImport = document.getElementById("applyImport");
+const closeIO = document.getElementById("closeIO");
+const ioHint = document.getElementById("ioHint");
+
+function showMenu(){
+  currentGroup = null;
+  subtitle.textContent = "Elige grupo muscular.";
+  screenMenu.classList.remove("hide");
+  screenList.classList.add("hide");
+  list.innerHTML = "";
+  search.value = "";
+}
+function showGroup(group){
+  currentGroup = group;
+  subtitle.textContent = "Todo en una línea: Peso / Reps / Series / ✅";
+  groupTitle.textContent = group;
+  screenMenu.classList.add("hide");
+  screenList.classList.remove("hide");
+  renderList();
+}
+function renderMenu(){
+  groupMenu.innerHTML = "";
+  for(const g of GROUPS){
+    const b = document.createElement("div");
+    b.className = "btn";
+    b.textContent = g;
+    b.addEventListener("click", () => showGroup(g));
+    groupMenu.appendChild(b);
+  }
+}
+
+function strengthLineHTML(current, isCustom, isDone){
+  return `
+    <div class="line">
+      ${isCustom ? `<button class="iconBtn" title="Borrar">🗑️</button>` : ``}
+      <span class="name ${isDone ? "done" : ""}" title="Toca el nombre para ver el último registro">${escapeHtml(current.name)}</span>
+
+      <input data-weight class="w3" type="text" value="${escapeHtml(current.weight)}" title="Peso" />
+      <span class="chip" data-reps="-1">−</span>
+      <input data-reps-input class="w2" type="text" value="${escapeHtml(current.reps)}" title="Reps" />
+      <span class="chip" data-reps="+1">+</span>
+
+      <span class="chip" data-sets="-1">−</span>
+      <input data-sets-input class="w2" type="text" value="${escapeHtml(current.sets)}" title="Series" />
+      <span class="chip" data-sets="+1">+</span>
+
+      <input type="checkbox" ${isDone ? "checked" : ""} title="Hecho" />
+    </div>
+  `;
+}
+
+function cardioLineHTML(current, isCustom, isDone){
+  // minutos 3ch, nivel 2ch, series 2ch
+  return `
+    <div class="line">
+      ${isCustom ? `<button class="iconBtn" title="Borrar">🗑️</button>` : ``}
+      <span class="name ${isDone ? "done" : ""}">${escapeHtml(current.name)}</span>
+
+      <input data-minutes class="w3" type="text" value="${escapeHtml(current.minutes)}" title="Min" />
+      <input data-level class="w2" type="text" value="${escapeHtml(current.level)}" title="Nivel" />
+
+      <span class="chip" data-sets="-1">−</span>
+      <input data-sets-input class="w2" type="text" value="${escapeHtml(current.sets)}" title="Series" />
+      <span class="chip" data-sets="+1">+</span>
+
+      <input type="checkbox" ${isDone ? "checked" : ""} title="Hecho" />
+    </div>
+  `;
+}
+
+function renderList(){
+  const store = loadStore();
+  const q = search.value.trim().toLowerCase();
+
+  const items = getAllExercises()
+    .filter(e => e.group === currentGroup)
+    .filter(e => !q || e.name.toLowerCase().includes(q) || (e.subgroup||"").toLowerCase().includes(q));
+
+  list.innerHTML = "";
+
+  if(items.length === 0){
+    const empty = document.createElement("div");
+    empty.className = "card";
+    empty.textContent = "Nada por aquí.";
+    list.appendChild(empty);
+    return;
+  }
+
+  const grouped = new Map();
+  for(const ex of items){
+    const key = (currentGroup === "PIERNAS") ? (ex.subgroup || "OTROS") : "—";
+    if(!grouped.has(key)) grouped.set(key, []);
+    grouped.get(key).push(ex);
+  }
+
+  for(const [sg, arr] of grouped.entries()){
+    if(currentGroup === "PIERNAS"){
+      const st = document.createElement("div");
+      st.className = "sectionTitle";
+      st.textContent = sg;
+      list.appendChild(st);
+    }
+
+    for(const ex of arr){
+      const exId = idFor(ex);
+      const isCustom = isExerciseCustom(exId);
+      const isDone = !!store.done[exId];
+      const last = store.items[exId] || null;
+
+      let current;
+      if(ex.kind === "cardio"){
+        current = {
+          kind:"cardio",
+          name: ex.name,
+          minutes: String(last?.minutes ?? ex.minutes ?? ""),
+          level: String(last?.level ?? ex.level ?? ""),
+          sets: String(last?.sets ?? ex.sets ?? 1),
+          updatedAt: last?.updatedAt ?? null
+        };
+      } else {
+        current = {
+          kind:"strength",
+          name: ex.name,
+          weight: String(last?.weight ?? ex.weight ?? ""),
+          reps: String(last?.reps ?? DEFAULT_REPS),
+          sets: String(last?.sets ?? DEFAULT_SETS),
+          updatedAt: last?.updatedAt ?? null
+        };
+      }
+
+      const card = document.createElement("div");
+      card.className = "card";
+      card.dataset.exId = exId;
+
+      // Tooltip con "último registro"
+      const updated = current.updatedAt ? new Date(current.updatedAt).toLocaleString() : "sin registro";
+      const summary = (current.kind === "cardio")
+        ? `Último: ${current.minutes||"—"}min · niv ${current.level||"—"} · series ${current.sets} (${updated})`
+        : `Último: peso ${current.weight||"—"} · reps ${current.reps} · series ${current.sets} (${updated})`;
+
+      card.title = summary;
+
+      card.innerHTML = (current.kind === "cardio")
+        ? cardioLineHTML(current, isCustom, isDone)
+        : strengthLineHTML(current, isCustom, isDone);
+
+      const checkbox = card.querySelector('input[type="checkbox"]');
+      const trashBtn = isCustom ? card.querySelector(".iconBtn") : null;
+
+      function persist(patch){
+        const st = loadStore();
+        const prev = st.items[exId] || {};
+        const next = { ...prev, ...patch, updatedAt: Date.now() };
+        // guardamos como texto para ser flexibles
+        if(next.kind === "cardio"){
+          next.minutes = String(next.minutes ?? "");
+          next.level = String(next.level ?? "");
+          next.sets = String(next.sets ?? "1");
+        } else {
+          next.weight = String(next.weight ?? "");
+          next.reps = String(next.reps ?? String(DEFAULT_REPS));
+          next.sets = String(next.sets ?? String(DEFAULT_SETS));
+        }
+        st.items[exId] = next;
+        saveStore(st);
+
+        const upd = new Date(next.updatedAt).toLocaleString();
+        const s = (next.kind === "cardio")
+          ? `Último: ${next.minutes||"—"}min · niv ${next.level||"—"} · series ${next.sets} (${upd})`
+          : `Último: peso ${next.weight||"—"} · reps ${next.reps} · series ${next.sets} (${upd})`;
+        card.title = s;
+      }
+
+      checkbox.addEventListener("change", () => {
+        const st = loadStore();
+        if(checkbox.checked) st.done[exId] = true;
+        else delete st.done[exId];
+        saveStore(st);
+        card.querySelector(".name").classList.toggle("done", checkbox.checked);
+      });
+
+      if(trashBtn){
+        trashBtn.addEventListener("click", () => {
+          if(!confirm("¿Borrar este ejercicio (solo el que añadiste tú)?")) return;
+          deleteExerciseById(exId);
+          renderList();
+        });
+      }
+
+      function asIntOr(v, fallback){
+        const n = parseInt(String(v).trim(), 10);
+        return Number.isFinite(n) ? n : fallback;
+      }
+
+      if(current.kind === "strength"){
+        const weightInput = card.querySelector("[data-weight]");
+        const repsMinus = card.querySelector('[data-reps="-1"]');
+        const repsPlus  = card.querySelector('[data-reps="+1"]');
+        const repsInput = card.querySelector("[data-reps-input]");
+        const setsMinus = card.querySelector('[data-sets="-1"]');
+        const setsPlus  = card.querySelector('[data-sets="+1"]');
+        const setsInput = card.querySelector("[data-sets-input]");
+
+        weightInput.addEventListener("change", () => persist({ kind:"strength", weight: weightInput.value }));
+
+        function setReps(v){
+          const val = Math.max(1, asIntOr(v, DEFAULT_REPS));
+          repsInput.value = String(val);
+          persist({ kind:"strength", reps: String(val) });
+        }
+        repsMinus.addEventListener("click", () => setReps(asIntOr(repsInput.value, DEFAULT_REPS) - 1));
+        repsPlus.addEventListener("click", () => setReps(asIntOr(repsInput.value, DEFAULT_REPS) + 1));
+        repsInput.addEventListener("change", () => setReps(repsInput.value));
+
+        function setSets(v){
+          const val = Math.max(1, asIntOr(v, DEFAULT_SETS));
+          setsInput.value = String(val);
+          persist({ kind:"strength", sets: String(val) });
+        }
+        setsMinus.addEventListener("click", () => setSets(asIntOr(setsInput.value, DEFAULT_SETS) - 1));
+        setsPlus.addEventListener("click", () => setSets(asIntOr(setsInput.value, DEFAULT_SETS) + 1));
+        setsInput.addEventListener("change", () => setSets(setsInput.value));
+
+      } else {
+        const minutesInput = card.querySelector("[data-minutes]");
+        const levelInput = card.querySelector("[data-level]");
+        const setsMinus = card.querySelector('[data-sets="-1"]');
+        const setsPlus  = card.querySelector('[data-sets="+1"]');
+        const setsInput = card.querySelector("[data-sets-input]");
+
+        minutesInput.addEventListener("change", () => persist({ kind:"cardio", minutes: minutesInput.value }));
+        levelInput.addEventListener("change", () => persist({ kind:"cardio", level: levelInput.value }));
+
+        function setSets(v){
+          const val = Math.max(1, asIntOr(v, 1));
+          setsInput.value = String(val);
+          persist({ kind:"cardio", sets: String(val) });
+        }
+        setsMinus.addEventListener("click", () => setSets(asIntOr(setsInput.value, 1) - 1));
+        setsPlus.addEventListener("click", () => setSets(asIntOr(setsInput.value, 1) + 1));
+        setsInput.addEventListener("change", () => setSets(setsInput.value));
+      }
+
+      list.appendChild(card);
+    }
+  }
+}
+
+// Añadir ejercicio
+function addExerciseFlow(){
+  const group = currentGroup;
+  let name = prompt(`Nuevo ejercicio para ${group}:\nNombre del ejercicio`);
+  if(!name) return;
+  name = name.trim();
+  if(!name) return;
+
+  const ex = { group, name };
+
+  if(group === "PIERNAS"){
+    const sg = prompt("Subcategoría (ej: GEMELOS / CUÁDRICEPS / GLÚTEOS / ISQUIOS / ADUCTORES)\nPuedes dejarlo vacío.");
+    if(sg && sg.trim()) ex.subgroup = sg.trim().toUpperCase();
+  }
+
+  if(group === "CARDIO"){
+    ex.kind = "cardio";
+    ex.minutes = (prompt("Minutos (puede quedar vacío)", "") ?? "").trim();
+    ex.level = (prompt("Nivel (puede quedar vacío)", "") ?? "").trim();
+    ex.sets = String(parseInt(prompt("Series (número)", "1") ?? "1", 10) || 1);
+  } else {
+    ex.kind = "strength";
+    ex.weight = (prompt("Peso inicial (corto: ej 25 / 12.5 / niv4)", "0") ?? "0").trim();
+    ex.reps = String(parseInt(prompt("Reps iniciales (default 15)", String(DEFAULT_REPS)) ?? String(DEFAULT_REPS), 10) || DEFAULT_REPS);
+    ex.sets = String(parseInt(prompt("Series iniciales (default 4)", String(DEFAULT_SETS)) ?? String(DEFAULT_SETS), 10) || DEFAULT_SETS);
+  }
+
+  const st = loadStore();
+  const exId = idFor(ex);
+  const already = getAllExercises().some(e => idFor(e) === exId);
+  if(already){ alert("Ya existe un ejercicio con ese nombre (y subcategoría)."); return; }
+
+  st.customExercises.push(ex);
+  saveStore(st);
+  renderList();
+}
+
+// acciones
+backBtn.addEventListener("click", showMenu);
+search.addEventListener("input", renderList);
+addExerciseBtn.addEventListener("click", addExerciseFlow);
+
+uncheckAll.addEventListener("click", () => {
+  const st = loadStore();
+  for(const ex of getAllExercises().filter(e => e.group === currentGroup)){
+    delete st.done[idFor(ex)];
+  }
+  saveStore(st);
+  renderList();
+});
+
+resetGroup.addEventListener("click", () => {
+  const ok = confirm(`¿Resetear datos del grupo ${currentGroup}?\n(peso/reps/series/minutos/nivel + checks)`);
+  if(!ok) return;
+
+  const st = loadStore();
+  for(const ex of getAllExercises().filter(e => e.group === currentGroup)){
+    const exId = idFor(ex);
+    delete st.items[exId];
+    delete st.done[exId];
+  }
+
+  const alsoDeleteCustom = confirm("¿También quieres borrar los ejercicios que tú añadiste en este grupo?");
+  if(alsoDeleteCustom){
+    st.customExercises = st.customExercises.filter(e => e.group !== currentGroup);
+  }
+
+  saveStore(st);
+  renderList();
+});
+
+quickSave.addEventListener("click", () => {
+  quickSave.textContent = "Guardado ✅";
+  setTimeout(() => quickSave.textContent = "Guardar (ya se guarda solo)", 900);
+});
+
+// backup
+exportBtn.addEventListener("click", () => {
+  ioArea.classList.remove("hide");
+  const st = loadStore();
+  ioText.value = JSON.stringify(st, null, 2);
+  ioHint.textContent = "Copia este texto y guárdalo donde quieras.";
+});
+
+importBtn.addEventListener("click", () => {
+  ioArea.classList.remove("hide");
+  ioText.value = "";
+  ioHint.textContent = "Pega aquí un backup (JSON) y pulsa 'Aplicar'.";
+});
+
+applyImport.addEventListener("click", () => {
+  try{
+    const data = JSON.parse(ioText.value);
+    if(!data || typeof data !== "object") throw new Error("JSON inválido");
+    if(!("items" in data) || !("done" in data) || !("customExercises" in data)) throw new Error("Formato incorrecto (falta items/done/customExercises)");
+    saveStore(data);
+    ioHint.textContent = "Importación OK ✅";
+    renderList();
+  }catch(e){
+    ioHint.textContent = "No pude importar: " + (e?.message || "error");
+  }
+});
+closeIO.addEventListener("click", () => ioArea.classList.add("hide"));
+
+// init
+renderMenu();
+showMenu();
+</script>
+
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("./sw.js").catch(()=>{});
+    });
+  }
+</script>
+
+</body>
+</html>
