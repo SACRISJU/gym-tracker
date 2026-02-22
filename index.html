@@ -84,6 +84,18 @@
       white-space:nowrap;
       margin-right: 6px;
     }
+    span[data-name-input] {
+      border: 1px dashed rgba(255,255,255,0.2);
+      padding: 2px 6px;
+      border-radius: 6px;
+      outline: none;
+      cursor: text;
+      min-width: 50px;
+    }
+    span[data-name-input]:focus {
+      border-color: rgba(82,255,169,0.5);
+      background: rgba(255,255,255,0.05);
+    }
     .done{ opacity:.55; text-decoration: line-through; }
 
     .chip{
@@ -138,6 +150,15 @@
       outline:none;
     }
     .hide{ display:none; }
+
+    /* Modal del sistema */
+    .sys-modal {
+      position:fixed; top:0; left:0; right:0; bottom:0;
+      background:rgba(0,0,0,0.8); z-index:999;
+      display:flex; align-items:center; justify-content:center;
+      padding:var(--pad); backdrop-filter:blur(4px);
+    }
+    .sys-modal.hide { display:none !important; }
   </style>
 
   <!-- PWA -->
@@ -159,6 +180,9 @@
 <main>
   <section id="screenMenu">
     <div class="menu" id="groupMenu"></div>
+    <div style="margin-top: 15px;">
+      <button class="btn primary" id="addGroupBtn" style="width: 100%;">+ Añadir Categoría</button>
+    </div>
     <div class="hint">Se guarda en tu móvil (LocalStorage). Si borras los datos del navegador, adiós progreso.</div>
   </section>
 
@@ -209,6 +233,18 @@
 
 <div class="footer">
   <button class="btn primary" id="quickSave">Guardar (ya se guarda solo)</button>
+</div>
+
+<!-- Ventana Emergente Personalizada -->
+<div id="sysModal" class="sys-modal hide">
+  <div class="card" style="width:100%; max-width:350px; background:#12141a; border:1px solid rgba(255,255,255,0.15); border-radius:18px; padding:20px;">
+    <div id="sysModalMsg" style="margin-bottom:15px; font-weight:bold; font-size:14px; white-space:pre-wrap; line-height:1.4;"></div>
+    <input id="sysModalInput" type="text" style="width:100%; box-sizing:border-box; margin-bottom:15px; padding:10px; font-size:14px;" />
+    <div class="row" style="justify-content:flex-end; margin-bottom:0;">
+      <button class="btn ghost" id="sysModalCancel" style="padding:10px 15px;">Cancelar</button>
+      <button class="btn primary" id="sysModalOk" style="padding:10px 15px; min-width:80px;">OK</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -276,12 +312,12 @@ const DEFAULT_SETS = 4;
 
 let currentGroup = null;
 
-function defaultStore(){ return { items:{}, done:{}, customExercises:[] }; }
+function defaultStore(){ return { items:{}, done:{}, customExercises:[], customGroups:[] }; }
 function loadStore(){
   try{
     const raw = localStorage.getItem(KEY);
     const st = raw ? JSON.parse(raw) : defaultStore();
-    st.items ||= {}; st.done ||= {}; st.customExercises ||= [];
+    st.items ||= {}; st.done ||= {}; st.customExercises ||= []; st.customGroups ||= [];
     return st;
   }catch{ return defaultStore(); }
 }
@@ -326,6 +362,7 @@ const uncheckAll = document.getElementById("uncheckAll");
 const resetGroup = document.getElementById("resetGroup");
 const quickSave = document.getElementById("quickSave");
 const addExerciseBtn = document.getElementById("addExerciseBtn");
+const addGroupBtn = document.getElementById("addGroupBtn");
 
 // Backup
 const exportBtn = document.getElementById("exportBtn");
@@ -335,6 +372,82 @@ const ioText = document.getElementById("ioText");
 const applyImport = document.getElementById("applyImport");
 const closeIO = document.getElementById("closeIO");
 const ioHint = document.getElementById("ioHint");
+
+// --- SISTEMA DE MODALES ---
+function customPrompt(msg, defaultVal = "") {
+  return new Promise(resolve => {
+    const overlay = document.getElementById("sysModal");
+    const msgEl = document.getElementById("sysModalMsg");
+    const inputEl = document.getElementById("sysModalInput");
+    const cancelBtn = document.getElementById("sysModalCancel");
+    const okBtn = document.getElementById("sysModalOk");
+
+    inputEl.style.display = "block";
+    cancelBtn.style.display = "block";
+    msgEl.textContent = msg;
+    inputEl.value = defaultVal;
+    overlay.classList.remove("hide");
+    inputEl.focus();
+
+    const cleanup = () => {
+      overlay.classList.add("hide");
+      cancelBtn.onclick = null;
+      okBtn.onclick = null;
+      inputEl.onkeydown = null;
+    };
+
+    cancelBtn.onclick = () => { cleanup(); resolve(null); };
+    okBtn.onclick = () => { cleanup(); resolve(inputEl.value); };
+    inputEl.onkeydown = (e) => { if(e.key === "Enter") okBtn.click(); };
+  });
+}
+
+function customConfirm(msg) {
+  return new Promise(resolve => {
+    const overlay = document.getElementById("sysModal");
+    const msgEl = document.getElementById("sysModalMsg");
+    const inputEl = document.getElementById("sysModalInput");
+    const cancelBtn = document.getElementById("sysModalCancel");
+    const okBtn = document.getElementById("sysModalOk");
+
+    inputEl.style.display = "none";
+    cancelBtn.style.display = "block";
+    msgEl.textContent = msg;
+    overlay.classList.remove("hide");
+
+    const cleanup = () => {
+      overlay.classList.add("hide");
+      cancelBtn.onclick = null;
+      okBtn.onclick = null;
+    };
+
+    cancelBtn.onclick = () => { cleanup(); resolve(false); };
+    okBtn.onclick = () => { cleanup(); resolve(true); };
+  });
+}
+
+function customAlert(msg) {
+  return new Promise(resolve => {
+    const overlay = document.getElementById("sysModal");
+    const msgEl = document.getElementById("sysModalMsg");
+    const inputEl = document.getElementById("sysModalInput");
+    const cancelBtn = document.getElementById("sysModalCancel");
+    const okBtn = document.getElementById("sysModalOk");
+
+    inputEl.style.display = "none";
+    cancelBtn.style.display = "none"; 
+    msgEl.textContent = msg;
+    overlay.classList.remove("hide");
+
+    const cleanup = () => {
+      overlay.classList.add("hide");
+      okBtn.onclick = null;
+    };
+
+    okBtn.onclick = () => { cleanup(); resolve(true); };
+  });
+}
+// --------------------------
 
 function showMenu(){
   currentGroup = null;
@@ -354,12 +467,55 @@ function showGroup(group){
 }
 function renderMenu(){
   groupMenu.innerHTML = "";
-  for(const g of GROUPS){
+  const st = loadStore();
+  const allGroups = [...GROUPS, ...st.customGroups];
+
+  for(const g of allGroups){
+    const wrap = document.createElement("div");
+    wrap.style.position = "relative";
+    wrap.style.display = "flex";
+
     const b = document.createElement("div");
     b.className = "btn";
+    b.style.flex = "1";
     b.textContent = g;
     b.addEventListener("click", () => showGroup(g));
-    groupMenu.appendChild(b);
+    wrap.appendChild(b);
+
+    // Botón de borrar solo para categorías personalizadas
+    if (st.customGroups.includes(g)) {
+      const del = document.createElement("div");
+      del.textContent = "✕";
+      del.style.position = "absolute";
+      del.style.top = "-6px";
+      del.style.right = "-6px";
+      del.style.background = "#ff5454";
+      del.style.color = "#fff";
+      del.style.borderRadius = "50%";
+      del.style.width = "20px";
+      del.style.height = "20px";
+      del.style.display = "flex";
+      del.style.alignItems = "center";
+      del.style.justifyContent = "center";
+      del.style.fontSize = "12px";
+      del.style.fontWeight = "bold";
+      del.style.cursor = "pointer";
+      del.style.boxShadow = "0 2px 4px rgba(0,0,0,0.5)";
+      del.addEventListener("click", async (e) => {
+        e.stopPropagation(); // Evita que al hacer clic se abra el grupo
+        if(await customConfirm(`¿Borrar la categoría "${g}" y todos sus ejercicios?`)){
+          const st2 = loadStore();
+          st2.customGroups = st2.customGroups.filter(x => x !== g);
+          // Borramos también los ejercicios creados en esa categoría
+          st2.customExercises = st2.customExercises.filter(ex => ex.group !== g);
+          saveStore(st2);
+          renderMenu();
+        }
+      });
+      wrap.appendChild(del);
+    }
+
+    groupMenu.appendChild(wrap);
   }
 }
 
@@ -367,7 +523,7 @@ function strengthLineHTML(current, isCustom, isDone){
   return `
     <div class="line">
       ${isCustom ? `<button class="iconBtn" title="Borrar">🗑️</button>` : ``}
-      <span class="name ${isDone ? "done" : ""}" title="Toca el nombre para ver el último registro">${escapeHtml(current.name)}</span>
+      <span data-name-input class="name ${isDone ? "done" : ""}" contenteditable="true" spellcheck="false" title="Editar nombre">${escapeHtml(current.displayName)}</span>
 
       <input data-weight class="w3" type="text" value="${escapeHtml(current.weight)}" title="Peso" />
       <span class="chip" data-reps="-1">−</span>
@@ -388,7 +544,7 @@ function cardioLineHTML(current, isCustom, isDone){
   return `
     <div class="line">
       ${isCustom ? `<button class="iconBtn" title="Borrar">🗑️</button>` : ``}
-      <span class="name ${isDone ? "done" : ""}">${escapeHtml(current.name)}</span>
+      <span data-name-input class="name ${isDone ? "done" : ""}" contenteditable="true" spellcheck="false" title="Editar nombre">${escapeHtml(current.displayName)}</span>
 
       <input data-minutes class="w3" type="text" value="${escapeHtml(current.minutes)}" title="Min" />
       <input data-level class="w2" type="text" value="${escapeHtml(current.level)}" title="Nivel" />
@@ -408,7 +564,13 @@ function renderList(){
 
   const items = getAllExercises()
     .filter(e => e.group === currentGroup)
-    .filter(e => !q || e.name.toLowerCase().includes(q) || (e.subgroup||"").toLowerCase().includes(q));
+    .filter(e => {
+      if(!q) return true;
+      const exId = idFor(e);
+      const last = store.items[exId];
+      const dispName = (last?.displayName || e.name).toLowerCase();
+      return dispName.includes(q) || (e.subgroup||"").toLowerCase().includes(q);
+    });
 
   list.innerHTML = "";
 
@@ -446,6 +608,7 @@ function renderList(){
         current = {
           kind:"cardio",
           name: ex.name,
+          displayName: last?.displayName || ex.name,
           minutes: String(last?.minutes ?? ex.minutes ?? ""),
           level: String(last?.level ?? ex.level ?? ""),
           sets: String(last?.sets ?? ex.sets ?? 1),
@@ -455,6 +618,7 @@ function renderList(){
         current = {
           kind:"strength",
           name: ex.name,
+          displayName: last?.displayName || ex.name,
           weight: String(last?.weight ?? ex.weight ?? ""),
           reps: String(last?.reps ?? DEFAULT_REPS),
           sets: String(last?.sets ?? DEFAULT_SETS),
@@ -477,6 +641,19 @@ function renderList(){
       card.innerHTML = (current.kind === "cardio")
         ? cardioLineHTML(current, isCustom, isDone)
         : strengthLineHTML(current, isCustom, isDone);
+
+      const nameEdit = card.querySelector('[data-name-input]');
+      nameEdit.addEventListener("blur", () => {
+        const newVal = nameEdit.textContent.trim();
+        persist({ displayName: newVal || ex.name });
+        if(!newVal) nameEdit.textContent = ex.name;
+      });
+      nameEdit.addEventListener("keydown", (e) => {
+        if(e.key === "Enter"){
+          e.preventDefault();
+          nameEdit.blur();
+        }
+      });
 
       const checkbox = card.querySelector('input[type="checkbox"]');
       const trashBtn = isCustom ? card.querySelector(".iconBtn") : null;
@@ -514,8 +691,8 @@ function renderList(){
       });
 
       if(trashBtn){
-        trashBtn.addEventListener("click", () => {
-          if(!confirm("¿Borrar este ejercicio (solo el que añadiste tú)?")) return;
+        trashBtn.addEventListener("click", async () => {
+          if(!(await customConfirm("¿Borrar este ejercicio (solo el que añadiste tú)?"))) return;
           deleteExerciseById(exId);
           renderList();
         });
@@ -581,9 +758,9 @@ function renderList(){
 }
 
 // Añadir ejercicio
-function addExerciseFlow(){
+async function addExerciseFlow(){
   const group = currentGroup;
-  let name = prompt(`Nuevo ejercicio para ${group}:\nNombre del ejercicio`);
+  let name = await customPrompt(`Nuevo ejercicio para ${group}:\nNombre del ejercicio`);
   if(!name) return;
   name = name.trim();
   if(!name) return;
@@ -591,26 +768,26 @@ function addExerciseFlow(){
   const ex = { group, name };
 
   if(group === "PIERNAS"){
-    const sg = prompt("Subcategoría (ej: GEMELOS / CUÁDRICEPS / GLÚTEOS / ISQUIOS / ADUCTORES)\nPuedes dejarlo vacío.");
+    const sg = await customPrompt("Subcategoría (ej: GEMELOS / CUÁDRICEPS / GLÚTEOS / ISQUIOS / ADUCTORES)\nPuedes dejarlo vacío.");
     if(sg && sg.trim()) ex.subgroup = sg.trim().toUpperCase();
   }
 
   if(group === "CARDIO"){
     ex.kind = "cardio";
-    ex.minutes = (prompt("Minutos (puede quedar vacío)", "") ?? "").trim();
-    ex.level = (prompt("Nivel (puede quedar vacío)", "") ?? "").trim();
-    ex.sets = String(parseInt(prompt("Series (número)", "1") ?? "1", 10) || 1);
+    ex.minutes = ((await customPrompt("Minutos (puede quedar vacío)", "")) ?? "").trim();
+    ex.level = ((await customPrompt("Nivel (puede quedar vacío)", "")) ?? "").trim();
+    ex.sets = String(parseInt((await customPrompt("Series (número)", "1")) ?? "1", 10) || 1);
   } else {
     ex.kind = "strength";
-    ex.weight = (prompt("Peso inicial (corto: ej 25 / 12.5 / niv4)", "0") ?? "0").trim();
-    ex.reps = String(parseInt(prompt("Reps iniciales (default 15)", String(DEFAULT_REPS)) ?? String(DEFAULT_REPS), 10) || DEFAULT_REPS);
-    ex.sets = String(parseInt(prompt("Series iniciales (default 4)", String(DEFAULT_SETS)) ?? String(DEFAULT_SETS), 10) || DEFAULT_SETS);
+    ex.weight = ((await customPrompt("Peso inicial (corto: ej 25 / 12.5 / niv4)", "0")) ?? "0").trim();
+    ex.reps = String(parseInt((await customPrompt("Reps iniciales (default 15)", String(DEFAULT_REPS))) ?? String(DEFAULT_REPS), 10) || DEFAULT_REPS);
+    ex.sets = String(parseInt((await customPrompt("Series iniciales (default 4)", String(DEFAULT_SETS))) ?? String(DEFAULT_SETS), 10) || DEFAULT_SETS);
   }
 
   const st = loadStore();
   const exId = idFor(ex);
   const already = getAllExercises().some(e => idFor(e) === exId);
-  if(already){ alert("Ya existe un ejercicio con ese nombre (y subcategoría)."); return; }
+  if(already){ await customAlert("Ya existe un ejercicio con ese nombre (y subcategoría)."); return; }
 
   st.customExercises.push(ex);
   saveStore(st);
@@ -622,6 +799,23 @@ backBtn.addEventListener("click", showMenu);
 search.addEventListener("input", renderList);
 addExerciseBtn.addEventListener("click", addExerciseFlow);
 
+addGroupBtn.addEventListener("click", async () => {
+  let name = await customPrompt("Nombre de la nueva categoría (ej. ANTEBRAZOS):");
+  if(!name) return;
+  name = name.trim().toUpperCase();
+  if(!name) return;
+
+  const st = loadStore();
+  if(GROUPS.includes(name) || st.customGroups.includes(name)){
+    await customAlert("Esta categoría ya existe.");
+    return;
+  }
+  
+  st.customGroups.push(name);
+  saveStore(st);
+  renderMenu();
+});
+
 uncheckAll.addEventListener("click", () => {
   const st = loadStore();
   for(const ex of getAllExercises().filter(e => e.group === currentGroup)){
@@ -631,8 +825,8 @@ uncheckAll.addEventListener("click", () => {
   renderList();
 });
 
-resetGroup.addEventListener("click", () => {
-  const ok = confirm(`¿Resetear datos del grupo ${currentGroup}?\n(peso/reps/series/minutos/nivel + checks)`);
+resetGroup.addEventListener("click", async () => {
+  const ok = await customConfirm(`¿Resetear datos del grupo ${currentGroup}?\n(peso/reps/series/minutos/nivel + checks)`);
   if(!ok) return;
 
   const st = loadStore();
@@ -642,7 +836,7 @@ resetGroup.addEventListener("click", () => {
     delete st.done[exId];
   }
 
-  const alsoDeleteCustom = confirm("¿También quieres borrar los ejercicios que tú añadiste en este grupo?");
+  const alsoDeleteCustom = await customConfirm("¿También quieres borrar los ejercicios que tú añadiste en este grupo?");
   if(alsoDeleteCustom){
     st.customExercises = st.customExercises.filter(e => e.group !== currentGroup);
   }
@@ -689,6 +883,7 @@ renderMenu();
 showMenu();
 </script>
 
+<!-- Descomentaremos el PWA Service Worker cuando lo lleves a producción
 <script>
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
@@ -696,6 +891,7 @@ showMenu();
     });
   }
 </script>
+-->
 
 </body>
 </html>
