@@ -6,7 +6,15 @@
   <title>Gym Tracker (ultra compact v2)</title>
   <style>
     :root { --pad: 12px; --radius: 14px; }
-    body { margin:0; font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:#0b0c10; color:#e8e8e8; }
+    html { background: #0b0c10; } /* Fondo base igual al cuerpo de la app */
+    body { 
+      margin: 0 auto; 
+      min-height: 100vh;
+      font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; 
+      background: #0b0c10; 
+      color: #e8e8e8; 
+      position: relative;
+    }
     header{
       position:sticky; top:0; z-index:5;
       background: rgba(11,12,16,0.9); backdrop-filter: blur(10px);
@@ -76,7 +84,30 @@
       flex-wrap:nowrap;
       overflow-x:auto; /* por si algún nombre es larguísimo */
       -webkit-overflow-scrolling: touch;
+      padding-bottom: 8px; /* da un poco de espacio extra abajo */
+      cursor: grab; /* Cambia el cursor a una manito en PC */
     }
+    .line:active {
+      cursor: grabbing; /* Manito cerrada al hacer clic */
+    }
+    
+    /* Estilizar la barra de scroll en PC para que se vea moderna */
+    .line::-webkit-scrollbar {
+      height: 6px;
+    }
+    .line::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .line::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,0.15);
+      border-radius: 10px;
+    }
+    
+    /* Esta regla evita que los elementos se aplasten y se monten */
+    .line > * {
+      flex-shrink: 0; 
+    }
+    
     .name{
       font-weight:900;
       font-size: 13px;
@@ -131,6 +162,8 @@
 
     .footer{
       position:fixed; left:0; right:0; bottom:0;
+      margin: 0 auto;
+      box-sizing: border-box; /* Para que el padding no rompa el ancho */
       background: rgba(11,12,16,0.92);
       border-top: 1px solid rgba(255,255,255,0.08);
       padding: 10px var(--pad);
@@ -881,9 +914,36 @@ closeIO.addEventListener("click", () => ioArea.classList.add("hide"));
 // init
 renderMenu();
 showMenu();
+
+// --- MAGIA PARA ARRASTRAR CON EL RATÓN EN PC ---
+let isDragging = false;
+let startX, scrollLeft, activeSlider;
+
+document.addEventListener('mousedown', (e) => {
+  const line = e.target.closest('.line');
+  if (!line) return;
+  // No arrastrar si el usuario intenta escribir, editar el nombre o hacer clic en un botón
+  if (['INPUT', 'BUTTON'].includes(e.target.tagName) || e.target.hasAttribute('contenteditable')) return;
+  
+  isDragging = true;
+  activeSlider = line;
+  startX = e.pageX - activeSlider.offsetLeft;
+  scrollLeft = activeSlider.scrollLeft;
+});
+
+document.addEventListener('mouseup', () => { isDragging = false; activeSlider = null; });
+document.addEventListener('mouseleave', () => { isDragging = false; activeSlider = null; });
+
+document.addEventListener('mousemove', (e) => {
+  if (!isDragging || !activeSlider) return;
+  e.preventDefault(); // Evita seleccionar texto sin querer al arrastrar
+  const x = e.pageX - activeSlider.offsetLeft;
+  const walk = (x - startX) * 1.5; // Velocidad del arrastre
+  activeSlider.scrollLeft = scrollLeft - walk;
+});
 </script>
 
-<!-- Descomentaremos el PWA Service Worker cuando lo lleves a producción
+<!-- PWA Service Worker activado para producción -->
 <script>
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
@@ -891,7 +951,6 @@ showMenu();
     });
   }
 </script>
--->
 
 </body>
 </html>
